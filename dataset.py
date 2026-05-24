@@ -63,11 +63,11 @@ class Im2LatexDataset(Dataset):
         # The exact Pandas config to handle quoted LaTeX strings
         self.metadata = pd.read_csv(
             split_path, 
-            header=None, 
-            sep=',',            # Explicitly split by commas
-            quotechar='"',      # Protect the commas inside the LaTeX string
+            header=0,           # FIX: Treat row 0 as column names and skip it!
+            sep=',',            
+            quotechar='"',      
             names=['formula', 'image'],
-            on_bad_lines='skip' # Automatically skip corrupted rows
+            on_bad_lines='skip' 
         )
 
     def __len__(self):

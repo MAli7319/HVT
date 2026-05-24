@@ -4,13 +4,12 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
-import wandb # <-- 1. Import W&B
+import wandb 
 
 from dataset import MathTokenizer, Im2LatexDataset
 from model import HVTSeq2Seq
 
 def main():
-    # --- PAPER SPEC 1: Data Augmentation ---
     image_transforms = transforms.Compose([
         transforms.RandomRotation(degrees=5), 
         transforms.RandomAffine(degrees=0, scale=(0.9, 1.1)), 
@@ -44,7 +43,6 @@ def main():
     learning_rate = 5e-4
     weight_decay = 2e-6
 
-    # --- 2. Initialize W&B Dashboard ---
     wandb.init(
         project="hvt-im2latex",
         name="hvt-resnet-lstm-run1",
@@ -66,8 +64,6 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = HVTSeq2Seq(vocab_size=tokenizer.vocab_size).to(device)
 
-    # --- 3. Watch the Model Gradients ---
-    # Log gradients and parameters every 100 steps to catch vanishing/exploding gradients
     wandb.watch(model, log="all", log_freq=100)
 
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -90,8 +86,11 @@ def main():
     epoch = 0
     optimizer.zero_grad() 
 
+    best_loss = float('inf')
+
     while global_step < total_iterations:
         epoch += 1
+        total_loss = 0.0 # Reset epoch loss tracking
         
         for batch_idx, (images, target_seqs) in enumerate(train_loader):
             if global_step >= total_iterations:
@@ -108,6 +107,9 @@ def main():
             loss = criterion(pred_flat, target_flat) / accumulation_steps
             loss.backward()
             
+            # Track the true loss for the epoch average
+            total_loss += loss.item() * accumulation_steps
+            
             if (batch_idx + 1) % accumulation_steps == 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 
@@ -117,8 +119,7 @@ def main():
                 
                 global_step += 1
                 
-                # --- 4. Log Live Metrics to the Dashboard ---
-                if global_step % 10 == 0:  # Log to wandb frequently
+                if global_step % 10 == 0:  
                     current_lr = scheduler.get_last_lr()[0]
                     display_loss = loss.item() * accumulation_steps 
                     
@@ -129,13 +130,23 @@ def main():
                         "global_step": global_step
                     })
                 
-                if global_step % 100 == 0: # Print to terminal occasionally
+                if global_step % 100 == 0: 
                     print(f"Step {global_step}/{total_iterations} | Loss: {display_loss:.4f} | LR: {current_lr:.6f}")
                     
-        torch.save(model.state_dict(), f"hvt_model_checkpoint_{epoch}.pth")
-        print(f"=== Epoch {epoch} Complete | Model Checkpoint Saved ===")
+        # --- NEW CHECKPOINT SAVING LOGIC ---
+        avg_loss = total_loss / len(train_loader)
+        print(f"=== Epoch {epoch} Complete | Average Loss: {avg_loss:.4f} ===")
         
-    # --- 5. Finish the W&B Run ---
+        if avg_loss < best_loss:
+            print(f"New best loss! ({best_loss:.4f} -> {avg_loss:.4f}). Saving model...")
+            best_loss = avg_loss
+            torch.save(model.state_dict(), "hvt_model_best.pth")
+        else:
+            print(f"Loss did not improve from {best_loss:.4f}.")
+            
+        # Optional: Save a "latest" checkpoint just in case the server crashes and you need to resume
+        torch.save(model.state_dict(), "hvt_model_latest.pth")
+        
     wandb.finish()
 
 if __name__ == "__main__":
