@@ -7,6 +7,12 @@ wheels/
 *.egg-info
 data/
 *.txt
+*.pdf
+*.pth
 
 # Virtual environments
 .venv
+
+wandb/
+chkpt/
+data/

@@ -1,17 +1,16 @@
 import torch
 import torch.nn as nn
 
-# ==========================================
-# 1. CNN BACKBONE
-# ==========================================
+""" Implementing a basic ResNet residual block with two 3x3 convolutions, batch normalization, and a shortcut path for ResNet. """
 class BasicBlock(nn.Module):
+    """ Initializing the convolution modules, batch normalization layers, and the downsampling shortcut projection. """
     def __init__(self, in_channels, out_channels, stride=(1, 1)):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3,
                                stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        
+
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3,
                                stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
@@ -24,6 +23,7 @@ class BasicBlock(nn.Module):
                 nn.BatchNorm2d(out_channels)
             )
 
+    """ Running the input through two convolution-BN-ReLU steps and adding the shortcut identity connection. """
     def forward(self, x):
         identity = self.downsample(x)
         out = self.conv1(x)
@@ -34,8 +34,9 @@ class BasicBlock(nn.Module):
         out += identity
         return self.relu(out)
 
-
+""" Implementing a ResNet-style CNN backbone that extracts multi-channel features from input math formula images. """
 class MathResNetBackbone(nn.Module):
+    """ Initializing the input convolutions, max pooling, and the four sequential stages of residual blocks. """
     def __init__(self):
         super().__init__()
         self.in_channels = 64
@@ -49,14 +50,17 @@ class MathResNetBackbone(nn.Module):
         self.layer3 = self._make_layer(256, 2, stride=(1, 2)) 
         self.layer4 = self._make_layer(512, 2, stride=(1, 2))
 
+    """ Building a sequence of residual blocks with the specified channel size, stride, and block count. """
     def _make_layer(self, out_channels, blocks, stride):
         layers = []
         layers.append(BasicBlock(self.in_channels, out_channels, stride))
         self.in_channels = out_channels
+        """ Looping to instantiate and append subsequent BasicBlocks to the sequential container. """
         for _ in range(1, blocks):
             layers.append(BasicBlock(out_channels, out_channels))
         return nn.Sequential(*layers)
 
+    """ Processing the input image sequentially through all conv, pooling, and residual stages. """
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)

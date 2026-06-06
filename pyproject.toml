@@ -1,7 +1,7 @@
 [project]
 name = "hvt"
 version = "0.1.0"
-description = "Add your description here"
+description = "Hybrid Vision Transformer"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
