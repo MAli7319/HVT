@@ -94,4 +94,4 @@ Below is the comparison between the original results reported by the authors (Ta
 | Model / Methodology | Evaluation Metric | Reported Score |
 | :--- | :---: | :---: |
 | **Original HVT** (Le et al., Table 1) | BLEU-4 | **89.94%** |
-| **Reproduction** | BLEU-4 | **87.09%** |
+| **Reproduction** | BLEU-4 | **87.90%** |
